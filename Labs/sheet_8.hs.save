@@ -1,0 +1,40 @@
+-- Lab Sheet 8
+
+-- 1. Imperative Language
+
+type Name = String
+type Memory = [(Name, Integer)]
+
+update :: Name -> Integer -> Memory -> Memory
+update n i [] = [(n, i)]
+update n i (h:t)
+	| fst h == n = (fst h, i):t
+	| otherwise = h:(update n i t)
+
+find :: Name -> Memory -> Integer 
+find n (h:t) 
+	| fst h == n = snd h
+	| otherwise = find n t
+
+data Aexp = Integer | Var Name | Add Aexp Aexp | Mult Aexp Aexp deriving (Show, Eq)
+data Bexp = And Bexp Bexp | Eq Aexp Aexp | Less Aexp Aexp | Not Bexp deriving (Show, Eq)
+data Comm = Assign Name Integer | [Comm] | Cond Bexp Comm Comm | Loop Bexp Comm
+
+evalA :: Aexp -> Memory -> Integer
+evalA (Add (Var l) (Var r)) m = find l m + find r m
+evalA (Mult (Var l) (Var r)) m = find l m * find r m
+
+evalB :: Bexp -> Memory -> Bool
+evalB (And l r) m = evalB l m == evalB r m
+evalB (Eq (Var l) (Var r)) m = find l m == find r m 
+evalB (Eq l r) m = evalA l m == evalA r m
+evalB (Less (Var l) (Var r)) m = find l m < find r m
+evalB (Less l r) m = evalA l m < evalA r m
+evalB (Not b) m = not (evalB b m)
+
+evalC :: Comm -> Memory -> Memory
+evalC (Assign n i) m = update n i m
+evalC (h:t) m = (evalC h m) ++ ((Seq t) m)
+evalC (Cond b t l) m
+	| evalB b m == True = evalC t m
+	| otherwise = eval l m
